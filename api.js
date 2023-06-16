@@ -10,8 +10,8 @@ mongoose.connect("mongodb://localhost:27017/checkin")
 
 
 try {
-  const result = await User.create({username: "jane teo", password: "testing", email:"janeteo@gmail.com", organisation:"NYP", accessKey: "123"});
-
+  const result = async () => await User.create({username: "jane teo", password: "testing", email:"janeteo@gmail.com", organisation:"NYP", accessKey: "123"});
+  result()
   console.log('Item prepopulated:', result);
 } catch (error) {
   console.error('Error prepopulating item:', error);
@@ -26,6 +26,7 @@ app.post("/api/wss/userLogin", async (req,res) => {
         "message": "User does not exist."
       }
     })
+    
     return
   } else if(!await User.findOne({password: req.body.password ?? ""})) {
     res.json({
