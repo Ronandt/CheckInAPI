@@ -19,7 +19,9 @@ try {
 
 
 app.post("/api/wss/userLogin", async (req,res) => {
+  console.log("HIHIHI")
   if(!await User.findOne({email: req.body.email ?? ""})) {
+    console.log("USER DOES NOT EXIST")
     return res.json({
       "status": "error",
       "result": {
@@ -34,7 +36,8 @@ app.post("/api/wss/userLogin", async (req,res) => {
         "message": "Incorrect Password."
       }
     })
-  } else if(!await User.findOne({accessKey: req.body.accessKey ?? ""})) {
+  } else if(!await User.findOne({accessKey: req.body.accesskey ?? ""})) {
+ 
     return res.json({
       "status": "error",
       "result": {
@@ -77,7 +80,7 @@ app.post("/api/wss/changePassword", async (req, res) => {
   }
 })
 
-app.post("/api/wss/updateProfileDetails", (req, res) => {
+app.post("/api/wss/updateProfileDetails", async (req, res) => {
   const user = await User.findById(req.body.accountid)
   if(req.body.accessKey !== user.accessKey) {
     return res.json({
@@ -97,7 +100,7 @@ app.post("/api/wss/updateProfileDetails", (req, res) => {
   }
 })
 
-app.get("/api/wss/getProfileDetails", (req, res) => {
+app.get("/api/wss/getProfileDetails", async (req, res) => {
   const user = await User.findById(req.body.accountid)
   if(!user) {
     return res.json({"status": "error",
