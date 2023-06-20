@@ -149,6 +149,7 @@ app.get("/api/getCheckedInDetails", async(req, res) => {
 
   let user = await User.findOne({accessKey: req.query.accesskey})
   if(!user) {
+    console.log("access key has expired")
     return res.json({
       "status": "error",
       "result": {
@@ -157,18 +158,21 @@ app.get("/api/getCheckedInDetails", async(req, res) => {
     })
 
   } else {
-    var latestEntry = await CheckInOutSession.find({ user: user._id })
-  
+    var latestEntry = (await CheckInOutSession.find({ user: user._id })
 .sort({ createdAt: -1 })
-.limit(1)
-.exec()[0];
+.limit(1))[0];
 
-var secondLastEntry =  await CheckInOutSession.find({ user: user._id })
+var secondLastEntry =  (await CheckInOutSession.find({ user: user._id })
 .sort({ createdAt: -1 }).skip(1)
-.limit(1)
-.exec()[0];
+.limit(1))[0];
+
+console.log("AAAA" +await CheckInOutSession.find({ user: user._id })
+.sort({ createdAt: -1 })
+.limit(1))
 
 
+console.log(latestEntry)
+console.log(secondLastEntry)
 let lastCheckedOut
 let lastCheckedIn
 let lastCheckedOutDate
@@ -191,6 +195,10 @@ if(latestEntry?.checkIn) {
   lastCheckedIn = ""
   lastCheckedInDate = ""
 }
+console.log(lastCheckedIn)
+console.log(lastCheckedInDate)
+console.log(lastCheckedOut)
+console.log(lastCheckedOutDate)
 
 
     return res.json({
@@ -219,18 +227,19 @@ if(latestEntry?.checkIn) {
 })
 
 app.post("/api/checkin", async (req, res) => {
-  var latestEntry = await CheckInOutSession.find({ accessKey:req.body.accesskey })
+  let user = await User.findOne({accessKey: req.body.accesskey})
+  console.log(user)
+  console.log(req.body)
+  var latestEntry = await CheckInOutSession.find({ user : user._id })
   .sort({ createdAt: -1 })
-  .limit(1)
-  .exec()[0];
+  .limit(1)[0];
   console.log("HIHIHIHI")
   console.log(latestEntry)
   
   if(!latestEntry?.checkIn) {
-    let user = await User.findOne({accessKey: req.body.accesskey})
     if(user) {
       const singaporeOffset = 8 * 60 * 60 * 1000; // Singapore is 8 hours ahead of UTC
-  const singaporeTime = new Date(Date.now() + singaporeOffset);
+  const singaporeTime = new Date(Date.now());
   const formattedDate = singaporeTime.toLocaleDateString('en-SG');
   
   console.log(formattedDate);
@@ -246,14 +255,16 @@ app.post("/api/checkin", async (req, res) => {
 })
 
 app.post("/api/checkout", async (req, res) => {
+  console.log("HIHIHIH")
   let user = await User.findOne({accessKey: req.body.accesskey})
   if(user) {
+    console.log("QAAAAAAAA")
     const singaporeOffset = 8 * 60 * 60 * 1000; // Singapore is 8 hours ahead of UTC
-const singaporeTime = new Date(Date.now() + singaporeOffset);
+const singaporeTime = new Date(Date.now());
 const formattedDate = singaporeTime.toLocaleDateString('en-SG');
 
 console.log(formattedDate);
-var latestEntry = await CheckInOutSession.find({user: user._id}).sort({createdAt: -1}).limit(1).exec()[0]
+var latestEntry = (await CheckInOutSession.find({user: user._id}).sort({createdAt: -1}).limit(1))[0]
 if(latestEntry){
   latestEntry.checkOut = Date.now()
   latestEntry.save()
