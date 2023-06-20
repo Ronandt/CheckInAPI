@@ -2,6 +2,8 @@ const express = require("express")
 const mongoose = require("mongoose")
 const User = require("./user")
 const user = require("./user")
+const CheckInOutSession = require("./CheckInOutSession")
+
 const app = express()
 const port = 3000
 app.use(express.json())
@@ -10,12 +12,28 @@ mongoose.connect("mongodb://localhost:27017/checkin")
 
 
 try {
-  const result = async () => await User.create({username: "jane teo", password: "testing", email:"janeteo@gmail.com", organisation:"NYP", accessKey: "123"});
-  result()
-  console.log('Item prepopulated:', result);
+  const asyncstuff = async () => await User.findOne({ email: "janeteo@gmail.com" });
+  asyncstuff().then((result) => {
+    if (!result) {
+      const createAsync = async () => {
+        const createdUser = await User.create({
+          username: "jane teo",
+          password: "testing",
+          email: "janeteo@gmail.com",
+          organisation: "NYP",
+          accessKey: "123"
+        });
+        console.log('Item prepopulated:', createdUser);
+      };
+      createAsync();
+    }
+  }).catch((error) => {
+    console.error('Error prepopulating item:', error);
+  });
 } catch (error) {
   console.error('Error prepopulating item:', error);
 }
+
 
 
 app.post("/api/wss/userLogin", async (req,res) => {
@@ -64,25 +82,30 @@ app.post("/api/wss/changePassword", async (req, res) => {
     return res.json({"status": "error", "result": {
       "message": "Passwords do not match"
     }})
+    
+  }
+  else if(user.accessKey != req.body.accesskey) {
+    return res.json({"status": "error", "result": {
+      "message": "Invalid Access Key or Key Has Expired."
+    }})
   } else if(user.password !== req.body.oldpwd) {
     return res.json({"status": "error", "result" : {
       "message": "Old Password Incorrect. Unable to proceed with password change"
     }})
-  } else if(user.accessKey != req.body.accessKey) {
-    return res.json({"status": "error", "result": {
-      "message": "Invalid Access Key or Key Has Expired."
-    }})
-  } else {
-
+  }  else {
+    user.password = req.body.newpwd
+    await user.save()
+    console.log("Updated successfully")
     return res.json({"status": "success", "result": {
-      "message": "Passwoord updated successfully."
+      "message": "Password updated successfully."
     }})
   }
 })
 
 app.post("/api/wss/updateProfileDetails", async (req, res) => {
+  console.log(req.body)
   const user = await User.findById(req.body.accountid)
-  if(req.body.accessKey !== user.accessKey) {
+  if(req.body.accessKey !== user?.accessKey) {
     return res.json({
       "status": "error",
       "result": {
@@ -90,7 +113,10 @@ app.post("/api/wss/updateProfileDetails", async (req, res) => {
       }
     })
   } else {
-
+    user.organisation = req.body.organisation
+    user.email = req.body.email
+    user.username = req.body.username
+    await user.save()
     return res.json({
       "status": "success",
       "result": {
@@ -100,7 +126,7 @@ app.post("/api/wss/updateProfileDetails", async (req, res) => {
   }
 })
 
-app.get("/api/wss/getProfileDetails", async (req, res) => {
+app.post("/api/wss/getProfileDetails", async (req, res) => {
   const user = await User.findById(req.body.accountid)
   if(!user) {
     return res.json({"status": "error",
@@ -110,12 +136,137 @@ app.get("/api/wss/getProfileDetails", async (req, res) => {
   } 
 
   return res.json({"status": "success", "result": {
-    "accountid": {}
+    "accountid": user._id,
+    "username": user.username,
+    "password": user.password,
+    "organisation": user.organisation,
+    "email":user.email
   }})
 
 
+})
+app.get("/api/getCheckedInDetails", async(req, res) => {
+
+  let user = await User.findOne({accessKey: req.query.accesskey})
+  if(!user) {
+    return res.json({
+      "status": "error",
+      "result": {
+      "message": "Invalid Access Key or Key Has Expired"
+      }
+    })
+
+  } else {
+    var latestEntry = await CheckInOutSession.find({ user: user._id })
+  
+.sort({ createdAt: -1 })
+.limit(1)
+.exec()[0];
+
+var secondLastEntry =  await CheckInOutSession.find({ user: user._id })
+.sort({ createdAt: -1 }).skip(1)
+.limit(1)
+.exec()[0];
+
+
+let lastCheckedOut
+let lastCheckedIn
+let lastCheckedOutDate
+let lastCheckedInDate
+if(latestEntry?.checkOut) {
+  lastCheckedOut =  latestEntry.checkOut
+  lastCheckedOutDate = latestEntry.date
+} else if (secondLastEntry?.checkOut){
+  lastCheckedOut = secondLastEntry.checkOut
+  lastCheckedOutDate = secondLastEntry.date
+} else {
+  lastCheckedOut = ""
+  lastCheckedOutDate = ""
+}
+
+if(latestEntry?.checkIn) {
+  lastCheckedIn = latestEntry?.checkIn
+  lastCheckedInDate = latestEntry?.date
+} else {
+  lastCheckedIn = ""
+  lastCheckedInDate = ""
+}
+
+
+    return res.json({
+      "status": "success",
+      "result": {
+      "data": [
+        {
+          "last_checked_in": [
+            {
+              "date":  lastCheckedInDate,
+              "time": lastCheckedIn
+            }
+          ]
+        },
+        {
+          "last_checked_out": [
+            {
+              "date": lastCheckedOutDate,
+              "time": lastCheckedOut
+            }
+          ]
+        }
+      ]}
+    })
+  }
+})
+
+app.post("/api/checkin", async (req, res) => {
+  var latestEntry = await CheckInOutSession.find({ accessKey:req.body.accesskey })
+  .sort({ createdAt: -1 })
+  .limit(1)
+  .exec()[0];
+  console.log("HIHIHIHI")
+  console.log(latestEntry)
+  
+  if(!latestEntry?.checkIn) {
+    let user = await User.findOne({accessKey: req.body.accesskey})
+    if(user) {
+      const singaporeOffset = 8 * 60 * 60 * 1000; // Singapore is 8 hours ahead of UTC
+  const singaporeTime = new Date(Date.now() + singaporeOffset);
+  const formattedDate = singaporeTime.toLocaleDateString('en-SG');
+  
+  console.log(formattedDate);
+  console.log("CHECK IN DONE")
+      var checkInOutSession = await CheckInOutSession.create({date: formattedDate, checkIn: Date.now(), user: user._id})
+    
+    }
+  }
+
+  return res.json({"status": "success", "result": {
+    "message": "Check in completed"
+  }})
+})
+
+app.post("/api/checkout", async (req, res) => {
+  let user = await User.findOne({accessKey: req.body.accesskey})
+  if(user) {
+    const singaporeOffset = 8 * 60 * 60 * 1000; // Singapore is 8 hours ahead of UTC
+const singaporeTime = new Date(Date.now() + singaporeOffset);
+const formattedDate = singaporeTime.toLocaleDateString('en-SG');
+
+console.log(formattedDate);
+var latestEntry = await CheckInOutSession.find({user: user._id}).sort({createdAt: -1}).limit(1).exec()[0]
+if(latestEntry){
+  latestEntry.checkOut = Date.now()
+  latestEntry.save()
+}
+
+  
+  }
+  return res.json({"status": "success", "result": {
+    "message": "Check out completed"
+  }})
 })
 
 app.listen(port, () => {
     console.log("App listening at 3000")
 })
+
