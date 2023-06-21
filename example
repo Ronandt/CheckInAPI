@@ -1,0 +1,45 @@
+{
+    "status": "success",
+    "result": {
+        "data": [
+            {
+                "week_num": 12,
+                "days": [
+                    {
+                        "entry_id": 221,
+                        "date": "14/03/2022",
+                        "time_in": "9:30am",
+                        "time_out": "11:30pm"
+                    },
+                    {
+                        "entry_id": 222,
+                        "date": "16/03/2022",
+                        "time_in": "8:30am",
+                        "time_out": "7:30pm"
+                    },
+                    {
+                        "entry_id": 223,
+                        "date": "18/03/2022",
+                        "time_in": "7:30am",
+                        "time_out": "11:50pm"
+                    }
+                ]
+            },
+            {
+                "week_num": 13,
+                "days": []
+            },
+            {
+                "week_num": 14,
+                "days": [
+                    {
+                        "entry_id": 224
+"date": "29/03/2022",
+                        "time_in": "2:30pm",
+                        "time_out": "4:39pm"
+                    }
+                ]
+            }
+        ]
+    }
+}

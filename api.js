@@ -275,7 +275,113 @@ if(latestEntry){
   return res.json({"status": "success", "result": {
     "message": "Check out completed"
   }})
+
 })
+
+
+app.get("/api/getRecords/:accessKey", async (req, res) => {
+  var user = await User.findOne({accessKey: req.params.accessKey})
+  console.log("AA" + JSON.stringify(user))
+  if(user) {
+    var allEntries = await CheckInOutSession.find({user: user._id})
+    console.log(user._id)
+    console.log(allEntries)
+    var userCreated = user.createdAt.toLocaleDateString()
+    console.log(userCreated)
+    var date = new Date(Date.now()).toLocaleString().split(',')[0]
+    console.log(date)
+    // Convert the dates to JavaScript Date objects
+var firstDate = new Date(date);
+var secondDate = new Date(userCreated);
+console.log(firstDate)
+console.log(secondDate)
+// Calculate the time difference in milliseconds
+var timeDiff = Math.abs(firstDate - secondDate);
+console.log(timeDiff)
+// Calculate the number of weeks
+var weeks = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 7));
+console.log(weeks)
+var weeks_nums = [...Array(weeks + 1).keys()]
+var data = []
+for(var o of weeks_nums) {
+  var newDate = new Date(secondDate);
+newDate.setDate(secondDate.getDate() + ((o+1) * 7));
+var realDate = (new Date(secondDate))
+ realDate.setDate(secondDate.getDate() + (o) * 7)
+console.log(realDate)
+console.log(newDate)
+console.log("HHHHH")
+var weeks_info = {"week_num": o}
+var days = []
+for(var x of allEntries) {
+  var dateParts = x.date.split("/");
+
+  // month is 0-based, that's why we need dataParts[1] - 1
+  var dateObject = new Date(+dateParts[2], dateParts[1] - 1, +dateParts[0]); 
+
+
+  console.log(dateObject) 
+  console.log(newDate >= dateObject)
+  console.log(dateObject >= realDate)
+  if(newDate >= dateObject && dateObject >= realDate  ) {
+    days.push({"entry_id": x._id, "date": x.date, "time_in": x.checkIn, "time_out": x?.checkOut ?? 0})
+    
+  }
+}
+
+weeks_info["days"] = days
+data.push(weeks_info)
+
+console.log(JSON.stringify(data))
+}
+
+
+    return res.json({"status": "success", "result": {
+      "data": data
+    }})
+  } else {
+    return res.json({"status": "error", "result": {"message": "Invalid Access Key or Key has expired"}})
+  }
+})
+
+
+app.post("/api/deleteEntry", async (req,res) => {
+let user = await User.findOne({accessKey: req.body.accesskey})
+console.log(JSON.stringify(user))
+if(user) {
+  let entry = await CheckInOutSession.findByIdAndDelete(req.body.entry_id)
+  console.log(entry)
+
+
+}
+return res.json({
+  "status": "success",
+  "result": {
+    "message": "Delete completed"
+  }
+})
+
+
+
+
+})
+
+app.post("/api/editEntry", async(req, res) => {
+  let user = await User.findOne({accessKey: req.body.accesskey})
+  if(user) {
+    var records = CheckInOutSession.findOneById(req.body.entry_id)
+    records.date = req.body.date
+    records.checkIn = req.body.time_in
+    records.checkOut = req.body.time_out
+    await records.save()
+  }
+  return res.json({"status": "success",
+"result": {
+  "message": "Update completed"
+}})
+})
+
+
 
 app.listen(port, () => {
     console.log("App listening at 3000")
