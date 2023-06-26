@@ -299,17 +299,16 @@ console.log(secondDate)
 var timeDiff = Math.abs(firstDate - secondDate);
 console.log(timeDiff)
 // Calculate the number of weeks
-var weeks = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 7));
+var weeks = Math.ceil(timeDiff / (1000 * 60 * 60 * 24 * 7));
 console.log(weeks)
 var weeks_nums = [...Array(weeks + 1).keys()]
 var data = []
+console.log(weeks_nums + "FOFSFOPFK")
 for(var o of weeks_nums) {
   var newDate = new Date(secondDate);
-newDate.setDate(secondDate.getDate() + ((o+1) * 7));
+newDate.setDate(secondDate.getDate() + ((o+1) * 7) -2);
 var realDate = (new Date(secondDate))
- realDate.setDate(secondDate.getDate() + (o) * 7)
-console.log(realDate)
-console.log(newDate)
+ realDate.setDate(secondDate.getDate() + ((o) * 7) -2)s console.log("NEWDATE" + newDate)
 console.log("HHHHH")
 var weeks_info = {"week_num": o}
 var days = []
@@ -328,6 +327,7 @@ for(var x of allEntries) {
     
   }
 }
+//implement multiple weeks
 
 weeks_info["days"] = days
 data.push(weeks_info)
@@ -369,7 +369,7 @@ return res.json({
 app.post("/api/editEntry", async(req, res) => {
   let user = await User.findOne({accessKey: req.body.accesskey})
   if(user) {
-    var records = CheckInOutSession.findOneById(req.body.entry_id)
+    var records = await CheckInOutSession.findById(req.body.entry_id)
     records.date = req.body.date
     records.checkIn = req.body.time_in
     records.checkOut = req.body.time_out
